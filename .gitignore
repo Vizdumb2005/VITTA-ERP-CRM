@@ -52,3 +52,10 @@ prompt
 server.log
 # Skills directory
 /skills/
+
+# runtime artifacts (recreated by build/dev scripts, never commit)
+.zscripts/dev.pid
+db/*.db
+db/*.db-journal
+upload/*
+!upload/.gitkeep
