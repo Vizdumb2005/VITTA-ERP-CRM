@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { ConvexProvider } from "convex/react";
+import { convex } from "@/lib/vitta/convex-client";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -35,7 +37,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
       >
-        {children}
+        <ConvexProvider client={convex}>{children}</ConvexProvider>
         <Toaster richColors position="top-right" />
       </body>
     </html>

@@ -1,0 +1,7 @@
+{
+  "name": "vitta-erp",
+  "compatibility": {
+    "frontend": "1.45.0",
+    "backend": "1.45.0"
+  }
+}
