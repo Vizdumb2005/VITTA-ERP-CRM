@@ -1,0 +1,319 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────── Partners ───────────────────────────
+
+model Contact {
+  id        String   @id @default(cuid())
+  name      String
+  email     String?
+  phone     String?
+  type      String   @default("customer") // customer | vendor | both
+  company   String?
+  city      String?
+  country   String?
+  vat       String?
+  isCompany Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  saleOrders      SaleOrder[]
+  purchaseOrders  PurchaseOrder[]
+  invoices        Invoice[]
+  leads           Lead[]
+  tickets         HelpdeskTicket[]
+  subscriptions   Subscription[]
+}
+
+// ─────────────────────────── Employees / HR ───────────────────────────
+
+model Employee {
+  id         String    @id @default(cuid())
+  name       String
+  email      String?
+  phone      String?
+  jobTitle   String?
+  department String?
+  salary     Float     @default(0)
+  hireDate   DateTime?
+  status     String    @default("active") // active | on_leave | departed
+
+  leaves     LeaveRequest[]
+  timesheets Timesheet[]
+}
+
+model LeaveRequest {
+  id         String    @id @default(cuid())
+  employeeId String
+  employee   Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  type       String    @default("casual") // casual | sick | earned | unpaid
+  from       DateTime
+  to         DateTime
+  days       Float     @default(1)
+  status     String    @default("pending") // pending | approved | refused
+  reason     String?
+  createdAt  DateTime  @default(now())
+}
+
+// ─────────────────────────── CRM ───────────────────────────
+
+model Lead {
+  id              String   @id @default(cuid())
+  name            String
+  contactName     String?
+  company         String?
+  email           String?
+  phone           String?
+  expectedRevenue Float    @default(0)
+  stage           String   @default("new") // new | qualified | proposition | negotiation | won | lost
+  priority        Int      @default(0) // 0..3
+  source          String?  // website | referral | campaign | walk_in | partner
+  ownerName       String?
+  notes           String?
+  createdAt       DateTime @default(now())
+
+  contactId String?
+  contact   Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+}
+
+// ─────────────────────────── Inventory ───────────────────────────
+
+model Product {
+  id        String   @id @default(cuid())
+  name      String
+  sku       String   @unique
+  category  String?
+  type      String   @default("goods") // goods | service
+  price     Float    @default(0)
+  cost      Float    @default(0)
+  qty       Float    @default(0)
+  unit      String   @default("Units")
+  createdAt DateTime @default(now())
+
+  manufacturingOrders ManufacturingOrder[]
+}
+
+// ─────────────────────────── Sales ───────────────────────────
+
+model SaleOrder {
+  id         String   @id @default(cuid())
+  number     String   @unique
+  customerId String
+  customer   Contact  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  date       DateTime @default(now())
+  status     String   @default("quotation") // quotation | sent | sale | done | cancel
+  notes      String?
+  createdAt  DateTime @default(now())
+
+  lines SaleOrderLine[]
+}
+
+model SaleOrderLine {
+  id          String    @id @default(cuid())
+  orderId     String
+  order       SaleOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  description String
+  qty         Float     @default(1)
+  price       Float     @default(0)
+}
+
+// ─────────────────────────── Purchase ───────────────────────────
+
+model PurchaseOrder {
+  id         String   @id @default(cuid())
+  number     String   @unique
+  vendorId   String
+  vendor     Contact  @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  date       DateTime @default(now())
+  status     String   @default("rfq") // rfq | confirmed | received | cancel
+  notes      String?
+  createdAt  DateTime @default(now())
+
+  lines PurchaseOrderLine[]
+}
+
+model PurchaseOrderLine {
+  id          String        @id @default(cuid())
+  orderId     String
+  order       PurchaseOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  description String
+  qty         Float         @default(1)
+  price       Float         @default(0)
+}
+
+// ─────────────────────────── Accounting ───────────────────────────
+
+model Invoice {
+  id        String    @id @default(cuid())
+  number    String    @unique
+  type      String    @default("customer") // customer | vendor
+  contactId String
+  contact   Contact   @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  date      DateTime  @default(now())
+  dueDate   DateTime?
+  status    String    @default("draft") // draft | posted | paid
+  notes     String?
+  createdAt DateTime  @default(now())
+
+  lines InvoiceLine[]
+}
+
+model InvoiceLine {
+  id          String   @id @default(cuid())
+  invoiceId   String
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  description String
+  qty         Float    @default(1)
+  price       Float    @default(0)
+}
+
+// ─────────────────────────── Project / Timesheets ───────────────────────────
+
+model Project {
+  id        String    @id @default(cuid())
+  name      String
+  color     String    @default("#714B67")
+  status    String    @default("active") // active | done | archived
+  deadline  DateTime?
+  createdAt DateTime  @default(now())
+
+  tasks      Task[]
+  timesheets Timesheet[]
+}
+
+model Task {
+  id        String    @id @default(cuid())
+  title     String
+  projectId String
+  project   Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  stage     String    @default("todo") // todo | in_progress | review | done
+  priority  Int       @default(0) // 0 | 1
+  assignee  String?
+  dueDate   DateTime?
+  createdAt DateTime  @default(now())
+}
+
+model Timesheet {
+  id         String    @id @default(cuid())
+  employeeId String
+  employee   Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  projectId  String?
+  project    Project?  @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  date       DateTime  @default(now())
+  hours      Float     @default(0)
+  description String?
+  createdAt  DateTime  @default(now())
+}
+
+// ─────────────────────────── Helpdesk / Field Service ───────────────────────────
+
+model HelpdeskTicket {
+  id          String   @id @default(cuid())
+  title       String
+  category    String   @default("helpdesk") // helpdesk | field
+  customerId  String?
+  customer    Contact? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  stage       String   @default("new") // new | in_progress | on_hold | resolved | cancelled
+  priority    String   @default("medium") // low | medium | high
+  assignee    String?
+  description String?
+  createdAt   DateTime @default(now())
+}
+
+// ─────────────────────────── Manufacturing ───────────────────────────
+
+model ManufacturingOrder {
+  id            String    @id @default(cuid())
+  number        String    @unique
+  productId     String
+  product       Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  qty           Float     @default(1)
+  status        String    @default("draft") // draft | confirmed | in_progress | done | cancelled
+  scheduledDate DateTime?
+  assignee      String?
+  createdAt     DateTime  @default(now())
+}
+
+// ─────────────────────────── Subscriptions / Marketing ───────────────────────────
+
+model Subscription {
+  id          String    @id @default(cuid())
+  name        String
+  plan        String    @default("starter") // starter | gold | enterprise
+  amount      Float     @default(0)
+  status      String    @default("active") // active | paused | churned
+  renewalDate DateTime?
+  customerId  String?
+  customer    Contact?  @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  createdAt   DateTime  @default(now())
+}
+
+model Campaign {
+  id         String    @id @default(cuid())
+  name       String
+  subject    String?
+  status     String    @default("draft") // draft | sent
+  recipients Int       @default(0)
+  opens      Int       @default(0)
+  clicks     Int       @default(0)
+  sentAt     DateTime?
+  createdAt  DateTime  @default(now())
+}
+
+// ─────────────────────────── Point of Sale ───────────────────────────
+
+model PosOrder {
+  id            String   @id @default(cuid())
+  number        String   @unique
+  total         Float    @default(0)
+  itemsCount    Int      @default(0)
+  items         String   @default("[]") // JSON string [{name, qty, price}]
+  paymentMethod String   @default("cash") // cash | card | upi
+  cashier       String   @default("Aarav Mehta")
+  createdAt     DateTime @default(now())
+}
+
+// ─────────────────────────── Productivity ───────────────────────────
+
+model Note {
+  id        String   @id @default(cuid())
+  title     String
+  content   String   @default("")
+  pinned    Boolean  @default(false)
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+}
+
+model DocFile {
+  id        String   @id @default(cuid())
+  name      String
+  kind      String   @default("pdf") // pdf | sheet | doc | image | folder | link
+  sizeKb    Int      @default(0)
+  owner     String   @default("Aarav Mehta")
+  folder    String   @default("General")
+  createdAt DateTime @default(now())
+}
+
+model SignDoc {
+  id          String    @id @default(cuid())
+  name        String
+  signer      String
+  status      String    @default("to_sign") // to_sign | signed
+  requestedAt DateTime  @default(now())
+  signedAt    DateTime?
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  channel   String   @default("general")
+  author    String
+  content   String
+  createdAt DateTime @default(now())
+}
+
+
